@@ -51,37 +51,18 @@ resource "aws_route_table" "main_route_table" {
   depends_on = [aws_vpc.main_vpc]
 }
 
-resource "aws_db_subnet_group" "rds_subnet_group" {
-  #name       = "rds_subnet_group"
+resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = [aws_subnet.main_subnet.id, aws_subnet.backup_subnet.id]
 }
 
 resource "aws_security_group" "main_security_group" {
-  name        = "allow_rds"
-  description = "Allow RDS inbound traffic"
+  name        = "allow_db"
+  description = "Allow MariaDB inbound traffic"
   vpc_id      = aws_vpc.main_vpc.id
 
   tags = {
-    Name = "allow_rds"
+    Name = "allow_db"
   }
-}
-
-resource "aws_db_instance" "main_db_rds" {
-  availability_zone     = element(var.availability_zones, 0)
-  publicly_accessible   = false
-  vpc_security_group_ids = [aws_security_group.main_security_group.id]
-  db_subnet_group_name  = aws_db_subnet_group.rds_subnet_group.name
-  allocated_storage     = 10
-  max_allocated_storage = 60  # enables autoscaling
-  engine                = "mysql"
-  engine_version        = "5.7"
-  instance_class        = "db.t3.micro"
-  identifier            = lower(var.db_name)
-  name                  = var.db_name
-  username              = var.db_username
-  password              = var.db_password
-  deletion_protection   = false
-  skip_final_snapshot   = true  # do not make snapshot before db removal
 }
 
 resource "aws_vpc_peering_connection" "dev" {
@@ -108,7 +89,7 @@ resource "aws_vpc_peering_connection_accepter" "peer" {
   depends_on = [aws_vpc_peering_connection.dev]
 }
 
-resource "aws_route" "route_rds" {
+resource "aws_route" "route_db" {
   provider                  = aws.peer
   route_table_id            = var.openshift_route_tb_id
   destination_cidr_block    = var.db_vpc_cidr
@@ -123,7 +104,7 @@ resource "aws_route" "route_openshift" {
   depends_on                = [aws_vpc_peering_connection.dev]
 }
 
-resource "aws_security_group_rule" "allow_rds" {
+resource "aws_security_group_rule" "allow_db" {
   type              = "ingress"
   from_port         = 0
   to_port           = 3306
@@ -133,3 +114,22 @@ resource "aws_security_group_rule" "allow_rds" {
   depends_on        = [aws_security_group.main_security_group]
 }
 
+resource "aws_security_group_rule" "allow_db_2" {
+  type              = "ingress"
+  from_port         = 4444
+  to_port           = 4567
+  protocol          = "tcp"
+  cidr_blocks       = [var.openshift_vpc_cidr]
+  security_group_id = aws_security_group.main_security_group.id
+  depends_on        = [aws_security_group.main_security_group]
+}
+
+resource "aws_security_group_rule" "allow_db_3" {
+  type              = "ingress"
+  from_port         = 9100
+  to_port           = 9100
+  protocol          = "tcp"
+  cidr_blocks       = [var.openshift_vpc_cidr]
+  security_group_id = aws_security_group.main_security_group.id
+  depends_on        = [aws_security_group.main_security_group]
+}

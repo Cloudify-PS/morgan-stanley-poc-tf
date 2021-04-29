@@ -18,21 +18,6 @@ variable "availability_zones" {
   description = "ELB availability zones"
 }
 
-variable "db_name" {
-  type = string
-  description = "Name of the database to be created"
-}
-
-variable "db_username" {
-  type = string
-  description = "Name of the database user"
-}
-
-variable "db_password" {
-  type = string
-  description = "Password of the database user"
-}
-
 variable "openshift_vpc_id" {
   type = string
   description = "ID of Openshift cluster VPC"
